@@ -1,0 +1,61 @@
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: squid
+spec:
+  replicas: 1
+  selector:
+    app: squid
+  template:
+    metadata:
+      labels:
+        app: squid
+    spec:
+      containers:
+        - env:
+            - name: SQUID_CONFIG_FILE
+              value: /tmp/squid/squid.conf
+            - name: SQUID_CACHE_DIR
+              value: /var/spool/squid/cache
+          image: image-registry.openshift-image-registry.svc:5000/continuous-release-tooling/squid:latest
+          imagePullPolicy: Always
+          name: squid
+          ports:
+            - containerPort: 3128
+              protocol: TCP
+          volumeMounts:
+          - mountPath: /var/spool/squid/cache
+            name: squid-cache
+          - mountPath: /tmp/squid
+            name: squid-config
+          - mountPath: /var/log/squid
+            name: squid-logs
+        - command:
+          - tail
+          - -f
+          - /var/log/squid/access.log
+          image: image-registry.openshift-image-registry.svc:5000/continuous-release-tooling/squid:latest
+          imagePullPolicy: Always
+          name: access-log-watcher
+          volumeMounts:
+          - mountPath: /var/log/squid
+            name: squid-logs
+      volumes:
+      - name: squid-cache
+        persistentVolumeClaim:
+          claimName: squid-cache
+      - name: squid-config
+        configMap:
+          name: squid-config
+      - name: squid-logs
+        emptyDir: {}
+  triggers:
+  - type: ConfigChange
+  - imageChangeParams:
+      automatic: true
+      containerNames:
+      - squid
+      from:
+        kind: ImageStreamTag
+        name: squid:latest
+    type: ImageChange

@@ -1,0 +1,12 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: squid
+spec:
+  port:
+    targetPort: squid
+  to:
+    kind: Service
+    name: squid
+    weight: 100
+  wildcardPolicy: None

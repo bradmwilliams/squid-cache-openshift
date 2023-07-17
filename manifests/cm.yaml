@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: squid-config
+data:
+  squid.conf: |-
+    #
+    # Squid configuration
+    #
+    http_port 3128
+    cache_dir ufs /var/spool/squid/cache 1500 16 256
+    coredump_dir /var/spool/squid
+    pid_filename /var/run/squid/squid.pid
+
+    #
+    # Access control
+    #
+
+    # OpenShift Cluster's "internal" IPs
+    acl localnet src 172.16.0.0/12
+
+    acl jenkins dstdomain cr.ops.openshift.com
+
+    http_access deny !jenkins
+    http_access deny CONNECT !jenkins
+ 
+    # Only allow cachemgr access from localhost
+    http_access allow localhost manager
+    http_access deny manager
+
+    # Protect web applications running on the same server as Squid. They often
+    # assume that only local users can access them at "localhost" ports.
+    http_access deny to_localhost
+
+    http_access allow localnet
+
+    http_access deny all
+
+    refresh_pattern ^ftp:		1440	20%	10080
+    refresh_pattern ^gopher:	1440	0%	1440
+    refresh_pattern -i (/cgi-bin/|\?) 0	0%	0
+    refresh_pattern .		0	20%	4320
